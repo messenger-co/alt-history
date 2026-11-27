@@ -1,10 +1,7 @@
 name: Deploy GitHub Pages
 
 on:
-  # Pages publishes main automatically. Deploy the compiled app after that job finishes.
-  workflow_run:
-    workflows: ["pages build and deployment"]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -35,12 +32,25 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Wait for the branch publish when Pages uses branch mode
+        timeout-minutes: 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repo="repos/$GITHUB_REPOSITORY"
+          if [[ "$(gh api "$repo/pages" --jq .build_type)" == "legacy" ]]; then
+            runs="$repo/actions/runs?event=dynamic&head_sha=$GITHUB_SHA"
+            until [[ "$(gh api "$runs" --jq '[.workflow_runs[] | select(.path == "dynamic/pages/pages-build-deployment")][0].status')" == "completed" ]]; do
+              sleep 10
+            done
+          fi
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
