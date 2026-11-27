@@ -304,6 +304,35 @@ export function renderAct5(
     ctx.stroke();
   }
 
+  // A folded map sails past the spinning flagship on its first and only crossing.
+  if (localT > 31) {
+    const progress = clamp01((localT - 31) / 9);
+    const x = -55 + progress * (CANVAS_WIDTH + 110);
+    const phase = x * 0.018 + t * 5.3 + 2;
+    ctx.save();
+    ctx.translate(x, 607 + Math.sin(phase) * 14);
+    ctx.rotate(Math.cos(phase) * 0.18);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 3;
+    ctx.fillStyle = '#EFE1BB';
+    ctx.beginPath();
+    ctx.moveTo(-46, -15);
+    ctx.lineTo(-10, -9);
+    ctx.lineTo(5, -38);
+    ctx.lineTo(22, -11);
+    ctx.lineTo(48, -20);
+    ctx.lineTo(26, 0);
+    ctx.lineTo(-22, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-10, -9);
+    ctx.lineTo(22, -11);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (activeDialogue?.speaker === 'stalin') {
     drawSpeechBubble(ctx, 380, 180, 'JOSEPH STALIN', activeDialogue.text, '#9B2C24', 'down', t);
   } else if (activeDialogue?.speaker === 'hitler') {
@@ -804,8 +833,36 @@ export function renderAct8(
   ctx.restore();
 
   // Animated bickering finger-pointing icons popping above hatch
-  drawComicStarburst(ctx, 430, 215, 'YOU DROVE!', 66, '#E85642', t);
-  drawComicStarburst(ctx, 865, 215, 'SHOTGUN!', 64, '#F2C94C', t + 1.1);
+  if (localT < 19) {
+    drawComicStarburst(ctx, 430, 215, 'YOU DROVE!', 66, '#E85642', t);
+  } else {
+    // The wallet opens on the last line. A moth is its sole occupant.
+    const elapsed = localT - 19;
+    ctx.save();
+    ctx.translate(895, 235 - 22 * Math.sin(Math.PI * clamp01(elapsed / 0.6)));
+    ctx.rotate(0.12);
+    ctx.fillStyle = '#875B32';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 4;
+    ctx.fillRect(-34, 0, 68, 39);
+    ctx.strokeRect(-34, 0, 68, 39);
+    const lid = 7 + 27 * clamp01(elapsed / 0.6);
+    ctx.fillRect(-34, -lid, 68, lid);
+    ctx.strokeRect(-34, -lid, 68, lid);
+    if (elapsed > 0.6) {
+      const flight = elapsed - 0.6;
+      ctx.translate(flight * 37, -lid - flight * 24 + Math.sin(flight * 4) * 9);
+      ctx.fillStyle = '#F5DF9C';
+      const wing = 2 + 7 * Math.abs(Math.sin(flight * 13));
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(side * wing, 0, wing, 6, side * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
 
   ctx.fillStyle = '#F7EED8';
   ctx.strokeStyle = INK;

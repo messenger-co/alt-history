@@ -191,6 +191,49 @@ export class NewsreelAudioEngine {
     }
   }
 
+  public async prepareRecording(start: number, end: number) {
+    if (!(await this.checkFishStatus())) return [];
+    if (!this.ctx || !this.recordDest) throw new Error('This browser cannot capture the dialogue track.');
+    await this.ctx.resume();
+    const clips: {cue: DialogueCue; buffer: AudioBuffer}[] = [];
+    for (const cue of DIALOGUE_CUES) {
+      if (cue.time < start || cue.time >= end) continue;
+      const raw = await this.fetchRawFishMp3(cue.id);
+      const buffer = raw && await this.decodeFishAudio(cue.id, raw);
+      if (!buffer) throw new Error(`Could not load the dialogue for "${cue.text}". Please retry.`);
+      clips.push({cue, buffer});
+    }
+    return clips;
+  }
+
+  public startRecordingClock(start: number, clips: {cue: DialogueCue; buffer: AudioBuffer}[]) {
+    const ctx = this.ctx;
+    const now = ctx ? () => ctx.currentTime : () => performance.now() / 1000;
+    const origin = now();
+    const sources: AudioBufferSourceNode[] = [];
+    if (ctx && this.masterGain) {
+      for (const {cue, buffer} of clips) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.masterGain);
+        // Keep a long reading inside its caption window.
+        source.playbackRate.value = Math.max(1, buffer.duration / cue.duration);
+        source.start(origin + (cue.time - start));
+        sources.push(source);
+      }
+    }
+    return {
+      hasVoices: clips.length > 0,
+      time: () => start + (now() - origin),
+      stop: () => {
+        for (const source of sources) {
+          source.stop();
+          source.disconnect();
+        }
+      },
+    };
+  }
+
   public speak(cue: DialogueCue): void {
     if (this.muted) return;
     this.cancelSpeech();

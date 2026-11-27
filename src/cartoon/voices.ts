@@ -2,13 +2,13 @@ import { DIALOGUE_CUES, DialogueCue, SpeakerId } from './timeline';
 
 /**
  * Fish Audio voice model IDs mapped accurately to each cast member.
- * Hirohito uses a random/default Fish Audio voice as requested.
+ * Hirohito uses the bilingual Dynamic Japanese Male voice.
  */
 export const FISH_VOICE_MODELS: Record<SpeakerId, string | null> = {
   hitler: '26474a484e3640d086da631baf813050',
   stalin: '890a2fc6bb62428f9d2f9bf6c90879b8',
   mussolini: '926182b0e84c43fdbd95ea0d46f6b10b',
-  hirohito: null,
+  hirohito: '7dc7084215d44059a48bd06de0185376',
   narrator: null,
 };
 
@@ -29,10 +29,7 @@ export function findDialogueCueById(cueId: string): DialogueCue | null {
  * Builds a validated Fish Audio TTS payload strictly from our allowlisted
  * cartoon dialogue cues (prevents untrusted arbitrary text/model injection).
  */
-export function buildFishTtsPayload(
-  cueId: string,
-  randomFallbackVoiceId?: string | null
-): FishTtsPayload | null {
+export function buildFishTtsPayload(cueId: string): FishTtsPayload | null {
   const cue = findDialogueCueById(cueId);
   if (!cue) return null;
 
@@ -44,8 +41,6 @@ export function buildFishTtsPayload(
 
   if (modelId) {
     payload.reference_id = modelId;
-  } else if (cue.speaker === 'hirohito' && randomFallbackVoiceId) {
-    payload.reference_id = randomFallbackVoiceId;
   }
 
   return payload;

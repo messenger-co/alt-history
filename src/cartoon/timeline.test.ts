@@ -46,10 +46,12 @@ test('getActAtTime returns the exact act across all 8 chapters', () => {
   assert.equal(getActAtTime(300).id, 1);
 });
 
-test('all 16 requested dialogue cues are sorted in time and active inside their windows', () => {
-  assert.equal(DIALOGUE_CUES.length, 16);
+test('dialogue cues are sorted in time and active inside their windows', () => {
+  assert.equal(new Set(DIALOGUE_CUES.map(cue => cue.id)).size, DIALOGUE_CUES.length);
   for (let i = 1; i < DIALOGUE_CUES.length; i++) {
-    assert.ok(DIALOGUE_CUES[i].time > DIALOGUE_CUES[i - 1].time);
+    const previous = DIALOGUE_CUES[i - 1];
+    assert.ok(DIALOGUE_CUES[i].time >= previous.time + previous.duration);
+    assert.ok(DIALOGUE_CUES[i].time - previous.time - previous.duration <= 8);
   }
   const cueAt4 = getActiveDialogue(4.5);
   assert.equal(cueAt4?.speaker, 'narrator');

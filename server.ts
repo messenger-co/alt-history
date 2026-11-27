@@ -10,13 +10,10 @@ import { FishTtsPayload, buildFishTtsPayload, findDialogueCueById } from './src/
 
 const PORT = 3000;
 const FISH_TTS_ENDPOINT = 'https://api.fish.audio/v1/tts';
-const FISH_MODELS_ENDPOINT = 'https://api.fish.audio/model?page_size=20&language=en';
 const MAX_VIDEO_UPLOAD_BYTES = 180 * 1024 * 1024; // 180 MB cap
 
 // In-memory cache of generated Fish Audio MP3 buffers keyed by allowlisted cueId
 const ttsAudioCache = new Map<string, Buffer>();
-let cachedHirohitoRandomVoiceId: string | null = null;
-let hirohitoVoiceChecked = false;
 
 function getFishApiKey(): string | null {
   const key = process.env.FISH_AUDIO_API_KEY?.trim();
@@ -24,31 +21,6 @@ function getFishApiKey(): string | null {
     return null;
   }
   return key;
-}
-
-/**
- * Picks a random public Fish Audio voice ID once per server session for Hirohito.
- */
-async function getRandomVoiceIdForHirohito(apiKey: string): Promise<string | null> {
-  if (hirohitoVoiceChecked) return cachedHirohitoRandomVoiceId;
-  hirohitoVoiceChecked = true;
-  try {
-    const res = await fetch(FISH_MODELS_ENDPOINT, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { items?: Array<{ _id?: string }> };
-    const candidates = (data.items ?? [])
-      .map((item) => item._id)
-      .filter((id): id is string => typeof id === 'string' && /^[a-f0-9]{16,64}$/i.test(id));
-    if (candidates.length > 0) {
-      const idx = crypto.randomInt(0, candidates.length);
-      cachedHirohitoRandomVoiceId = candidates[idx];
-    }
-  } catch {
-    // Non-fatal: Fish Audio uses its default voice when reference_id is omitted
-  }
-  return cachedHirohitoRandomVoiceId;
 }
 
 /**
@@ -190,9 +162,7 @@ async function startServer() {
     }
 
     try {
-      const randomVoice =
-        cue.speaker === 'hirohito' ? await getRandomVoiceIdForHirohito(apiKey) : null;
-      const payload = buildFishTtsPayload(cue.id, randomVoice);
+      const payload = buildFishTtsPayload(cue.id);
       if (!payload) {
         res.status(400).json({ error: 'Unable to build TTS payload.' });
         return;
