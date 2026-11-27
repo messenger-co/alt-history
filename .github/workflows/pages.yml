@@ -1,7 +1,10 @@
 name: Deploy GitHub Pages
 
 on:
-  push:
+  # Pages publishes main automatically. Deploy the compiled app after that job finishes.
+  workflow_run:
+    workflows: ["pages build and deployment"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
