@@ -11,7 +11,7 @@ test('maps Fish Audio voice model IDs accurately for Hitler, Stalin, Mussolini, 
   assert.equal(FISH_VOICE_MODELS.hitler, '26474a484e3640d086da631baf813050');
   assert.equal(FISH_VOICE_MODELS.stalin, '890a2fc6bb62428f9d2f9bf6c90879b8');
   assert.equal(FISH_VOICE_MODELS.mussolini, '926182b0e84c43fdbd95ea0d46f6b10b');
-  assert.equal(FISH_VOICE_MODELS.hirohito, null);
+  assert.equal(FISH_VOICE_MODELS.hirohito, '7dc7084215d44059a48bd06de0185376');
 });
 
 test('buildFishTtsPayload builds valid MP3 requests for allowlisted cues and rejects invalid IDs', () => {
@@ -26,8 +26,8 @@ test('buildFishTtsPayload builds valid MP3 requests for allowlisted cues and rej
   const mussoliniPayload = buildFishTtsPayload('act3-mussolini');
   assert.equal(mussoliniPayload?.reference_id, '926182b0e84c43fdbd95ea0d46f6b10b');
 
-  const hirohitoPayload = buildFishTtsPayload('act2-hirohito', 'random-model-123');
-  assert.equal(hirohitoPayload?.reference_id, 'random-model-123');
+  const hirohitoPayload = buildFishTtsPayload('act2-hirohito');
+  assert.equal(hirohitoPayload?.reference_id, FISH_VOICE_MODELS.hirohito);
 
   // Security validation: unknown or malicious cue IDs are rejected
   assert.equal(buildFishTtsPayload(''), null);

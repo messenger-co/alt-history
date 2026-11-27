@@ -1,6 +1,6 @@
 import { isNativeMp4Mime, selectBestRecorderMimeType } from './voices';
 
-export type ExportPhase = 'idle' | 'recording' | 'encoding' | 'done' | 'error';
+export type ExportPhase = 'idle' | 'preparing' | 'recording' | 'encoding' | 'done' | 'error';
 
 export class CartoonMp4Recorder {
   private mediaRecorder: MediaRecorder | null = null;

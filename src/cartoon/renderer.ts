@@ -108,7 +108,7 @@ function drawVintageFilmOverlay(
 
     ctx.fillStyle = '#FAF2DF';
     ctx.font = '600 23px "Plus Jakarta Sans", system-ui, sans-serif';
-    ctx.fillText(`"${activeDialogue.text}"`, CANVAS_WIDTH / 2, barY + 52);
+    ctx.fillText(`"${activeDialogue.text}"`, CANVAS_WIDTH / 2, barY + 52, CANVAS_WIDTH - 72);
     ctx.restore();
   }
 }

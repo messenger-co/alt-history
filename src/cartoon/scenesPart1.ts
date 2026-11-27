@@ -1254,18 +1254,37 @@ export function renderAct4(
       ctx.arc(955 + Math.sin(t * 3 + i) * 18, 470 - p * 185, 16 + p * 26, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Flying hay stalks & splintered wood
-    ctx.strokeStyle = '#E5B94C';
-    ctx.lineWidth = 4;
-    for (let i = 0; i < 18; i++) {
-      const a = (i / 18) * Math.PI * 2;
-      const dist = 40 + ((dt * 120 + i * 28) % 210);
-      const hx = 970 + Math.cos(a) * dist;
-      const hy = 450 + Math.sin(a) * dist * 0.65;
+    // The impact throws one burst of straw, which falls and settles.
+    if (dt < 2.8) {
+      ctx.strokeStyle = '#E5B94C';
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 18; i++) {
+        const angle = (i / 18) * Math.PI * 2;
+        const speed = 55 + (i % 5) * 23;
+        const hx = 970 + Math.cos(angle) * speed * dt;
+        const hy = Math.min(552, 450 + (Math.sin(angle) * speed - 95) * dt + 85 * dt * dt);
+        ctx.beginPath();
+        ctx.moveTo(hx - 10, hy);
+        ctx.lineTo(hx + 10, hy + 8);
+        ctx.stroke();
+      }
+    }
+    // One last hinge gives way as the crew considers returning the door.
+    if (localT >= 37) {
+      const swing = clamp01((localT - 37) / 1.5);
+      ctx.save();
+      ctx.translate(1085, 457);
+      ctx.rotate(swing * swing * 1.48 + Math.sin(swing * Math.PI) * 0.06);
+      ctx.fillStyle = '#984D39';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4;
+      ctx.fillRect(-68, 0, 68, 95);
+      ctx.strokeRect(-68, 0, 68, 95);
       ctx.beginPath();
-      ctx.moveTo(hx - 10, hy);
-      ctx.lineTo(hx + 10, hy + 8);
+      ctx.moveTo(-64, 5);
+      ctx.lineTo(-5, 90);
       ctx.stroke();
+      ctx.restore();
     }
     if (dt < 3.5) {
       drawComicStarburst(ctx, 1085, 315, 'CRASH!', 94, '#F2C94C', t);

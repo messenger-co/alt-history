@@ -47,6 +47,7 @@ export default function App() {
   const lastDialogueCueRef = useRef<number>(-1);
   const lastSfxCueRef = useRef<number>(-1);
 
+  const recordingClock = useRef<ReturnType<NewsreelAudioEngine['startRecordingClock']> | null>(null);
   const recordTargetEndRef = useRef<number | null>(null);
   const recordStartedAtRef = useRef<number>(0);
   const recordFilenameRef = useRef<string>('alt-history-newsreel-1940.mp4');
@@ -90,6 +91,7 @@ export default function App() {
 
   const seekTo = useCallback(
     (targetSeconds: number) => {
+      if (exportPhaseRef.current === 'recording') return;
       const next = playbackTime(targetSeconds);
       const audio = getAudio();
       audio.unlock();
@@ -110,6 +112,7 @@ export default function App() {
   );
 
   const togglePlay = useCallback(() => {
+    if (exportPhaseRef.current === 'recording' || exportPhaseRef.current === 'preparing') return;
     const audio = getAudio();
     audio.unlock();
     const next = !isPlayingRef.current;
@@ -132,6 +135,8 @@ export default function App() {
     const recorder = recorderRef.current;
     if (!recorder || exportPhaseRef.current !== 'recording') return;
 
+    recordingClock.current?.stop();
+    recordingClock.current = null;
     exportPhaseRef.current = 'encoding';
     recordTargetEndRef.current = null;
     setExportPhase('encoding');
@@ -157,7 +162,8 @@ export default function App() {
   }, []);
 
   const startMp4Recording = useCallback(
-    (scope: RecordScope) => {
+    async (scope: RecordScope) => {
+      if (['preparing', 'recording', 'encoding'].includes(exportPhaseRef.current)) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const audio = getAudio();
@@ -170,7 +176,7 @@ export default function App() {
       }
 
       const act = getActAtTime(timeRef.current);
-      const startSec = scope === 'full' ? 0 : act.start;
+      const startSec = playbackTime(scope === 'full' ? 0 : act.start);
       const endSec = scope === 'full' ? TOTAL_DURATION - 0.15 : act.end - 0.1;
 
       recordFilenameRef.current =
@@ -179,17 +185,19 @@ export default function App() {
           : `alt-history-newsreel-1940-act${act.id}.mp4`;
 
       setExportMenuOpen(false);
-      seekTo(startSec);
-
-      if (!isPlayingRef.current) {
+      exportPhaseRef.current = 'preparing';
+      setExportPhase('preparing');
+      setExportMessage('Preparing dialogue for recording...');
+      try {
+        const clips = await audio.prepareRecording(startSec, endSec);
+        if (canvasRef.current !== canvas) return;
+        seekTo(startSec);
         isPlayingRef.current = true;
         setIsPlaying(true);
-      }
-
-      try {
         const recorder = new CartoonMp4Recorder();
-        recorder.start(canvas, audio.getRecordingAudioStream());
         recorderRef.current = recorder;
+        recorder.start(canvas, audio.getRecordingAudioStream());
+        recordingClock.current = audio.startRecordingClock(startSec, clips);
         recordTargetEndRef.current = endSec;
         recordStartedAtRef.current = performance.now();
         exportPhaseRef.current = 'recording';
@@ -201,6 +209,9 @@ export default function App() {
             : `Recording ${act.label} MP4...`
         );
       } catch (err) {
+        recordingClock.current?.stop();
+        recordingClock.current = null;
+        recorderRef.current?.abort();
         exportPhaseRef.current = 'error';
         setExportPhase('error');
         setExportMessage(err instanceof Error ? err.message : 'Unable to start MP4 recording.');
@@ -212,6 +223,8 @@ export default function App() {
   // Abort active recording cleanly on unmount
   useEffect(() => {
     return () => {
+      recordingClock.current?.stop();
+      recordingClock.current = null;
       recorderRef.current?.abort();
     };
   }, []);
@@ -275,7 +288,8 @@ export default function App() {
       const dt = Math.min(0.05, Math.max(0, rawDt));
 
       const prevTime = timeRef.current;
-      const nextTime = playbackTime(prevTime + dt);
+      const clock = recordingClock.current;
+      const nextTime = playbackTime(clock ? clock.time() : prevTime + dt);
 
       // Auto-stop MP4 recording cleanly when reaching end of selected Act or 5:00
       if (
@@ -307,7 +321,7 @@ export default function App() {
       );
       if (dialogueIdx !== -1) {
         lastDialogueCueRef.current = dialogueIdx;
-        audio.speak(DIALOGUE_CUES[dialogueIdx]);
+        if (!clock?.hasVoices) audio.speak(DIALOGUE_CUES[dialogueIdx]);
       }
 
       // Trigger procedural Web Audio SFX once per cue window
@@ -342,6 +356,7 @@ export default function App() {
     };
   }, [finishRecordingAndExport, getAudio, isPlaying]);
 
+  const transportLocked = exportPhase === 'preparing' || exportPhase === 'recording';
   const progressPct = (displayTime / TOTAL_DURATION) * 100;
 
   return (
@@ -393,6 +408,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={togglePlay}
+                disabled={transportLocked}
                 aria-label={isPlaying ? 'Pause animation' : 'Play animation'}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] rounded-md bg-[#C8432B] hover:bg-[#D94F36] active:bg-[#B23822] text-[#FDF8EE] text-sm font-semibold transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6B95C]"
               >
@@ -404,6 +420,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => seekTo(0)}
+                disabled={transportLocked}
                 aria-label="Restart from beginning"
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-md bg-[#262019] hover:bg-[#332B21] text-[#E8DEC8] border border-[#3C3126] text-sm font-medium transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6B95C]"
               >
@@ -435,6 +452,7 @@ export default function App() {
                   </div>
                   <input
                     type="range"
+                    disabled={transportLocked}
                     min={0}
                     max={TOTAL_DURATION}
                     step={0.1}
@@ -480,15 +498,14 @@ export default function App() {
                       Stop &amp; Save MP4 ({formatTimecode(recordElapsed)})
                     </span>
                   </button>
-                ) : exportPhase === 'encoding' ? (
+                ) : exportPhase === 'preparing' || exportPhase === 'encoding' ? (
                   <button
                     type="button"
                     disabled
-                    aria-label="Encoding MP4 video"
                     className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-md bg-[#2D251C] border border-[#4A3C2D] text-[#E6B95C] text-sm font-medium whitespace-nowrap shrink-0 cursor-wait"
                   >
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Encoding MP4...</span>
+                    <span>{exportPhase === 'preparing' ? 'Preparing dialogue...' : 'Encoding MP4...'}</span>
                   </button>
                 ) : (
                   <button
@@ -561,6 +578,7 @@ export default function App() {
                     key={act.id}
                     type="button"
                     onClick={() => seekTo(act.start)}
+                    disabled={transportLocked}
                     aria-pressed={isActive}
                     aria-label={`Jump to ${act.label}: ${act.title} (${formatTimecode(act.start)})`}
                     className={`flex flex-col items-start px-2.5 py-2 rounded-md border text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6B95C] ${
