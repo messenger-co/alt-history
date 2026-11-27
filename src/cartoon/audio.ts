@@ -54,6 +54,7 @@ export class NewsreelAudioEngine {
   }
 
   public async checkFishStatus(): Promise<boolean> {
+    if (import.meta.env.MODE === 'pages') return false;
     if (this.fishConfigured !== null) return this.fishConfigured;
     if (!this.fishStatusPromise) {
       this.fishStatusPromise = fetch('/api/tts/status')
