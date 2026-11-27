@@ -24,6 +24,23 @@ jobs:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
       - run: bun run build --mode pages --base=/alt-history/
+      - uses: actions/cache/restore@v4
+        id: voices
+        with:
+          path: dist/voices
+          key: fish-voices-v1-${{ hashFiles('src/cartoon/voices.ts', 'src/cartoon/timeline.ts', 'server.ts', 'scripts/pages-voices.mjs') }}
+      - name: Prepare dialogue audio
+        env:
+          FISH_AUDIO_API_KEY: ${{ secrets.FISH_AUDIO_API_KEY }}
+        run: |
+          if [[ ! -f dist/voices/status.json ]]; then
+            bun scripts/pages-voices.mjs
+          fi
+      - uses: actions/cache/save@v4
+        if: steps.voices.outputs.cache-hit != 'true' && hashFiles('dist/voices/*.mp3') != ''
+        with:
+          path: dist/voices
+          key: ${{ steps.voices.outputs.cache-primary-key }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

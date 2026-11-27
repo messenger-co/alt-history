@@ -54,10 +54,10 @@ export class NewsreelAudioEngine {
   }
 
   public async checkFishStatus(): Promise<boolean> {
-    if (import.meta.env.MODE === 'pages') return false;
     if (this.fishConfigured !== null) return this.fishConfigured;
     if (!this.fishStatusPromise) {
-      this.fishStatusPromise = fetch('/api/tts/status')
+      const url = import.meta.env.MODE === 'pages' ? `${import.meta.env.BASE_URL}voices/status.json` : '/api/tts/status';
+      this.fishStatusPromise = fetch(url)
         .then((res) => (res.ok ? res.json() : { configured: false }))
         .then((data: { configured?: boolean }) => {
           this.fishConfigured = Boolean(data.configured);
@@ -149,7 +149,9 @@ export class NewsreelAudioEngine {
 
     const promise = (async () => {
       try {
-        const res = await fetch('/api/tts', {
+        const res = import.meta.env.MODE === 'pages'
+          ? await fetch(`${import.meta.env.BASE_URL}voices/${encodeURIComponent(cueId)}.mp3`)
+          : await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cueId }),
