@@ -23,13 +23,16 @@ import {
 
 type RecordScope = 'act' | 'full';
 
+// Keep the original chapter and dialogue timecodes when skipping the film leader.
+const FIRST_FRAME = 3.1;
+
+function playbackTime(seconds: number): number {
+  return Math.max(FIRST_FRAME, wrapTime(seconds));
+}
+
 function getInitialTimeFromUrl(): number {
-  if (typeof window === 'undefined') return 0;
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get('t');
-  if (!raw) return 0;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? wrapTime(parsed) : 0;
+  if (typeof window === 'undefined') return FIRST_FRAME;
+  return playbackTime(Number(new URLSearchParams(window.location.search).get('t')));
 }
 
 export default function App() {
@@ -87,7 +90,7 @@ export default function App() {
 
   const seekTo = useCallback(
     (targetSeconds: number) => {
-      const next = wrapTime(targetSeconds);
+      const next = playbackTime(targetSeconds);
       const audio = getAudio();
       audio.unlock();
       audio.cancelSpeech();
@@ -272,7 +275,7 @@ export default function App() {
       const dt = Math.min(0.05, Math.max(0, rawDt));
 
       const prevTime = timeRef.current;
-      const nextTime = wrapTime(prevTime + dt);
+      const nextTime = playbackTime(prevTime + dt);
 
       // Auto-stop MP4 recording cleanly when reaching end of selected Act or 5:00
       if (
