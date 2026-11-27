@@ -1,0 +1,6 @@
+{
+  "name": "Alt-History Newsreel: The Unholy Four-Way Alliance (1940)",
+  "description": "A 60fps 5-minute 1940s Fleischer-style sepia satirical cartoon animation with voiced speeches, procedural Web Audio SFX, and 8 interactive acts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
